@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: incubrix-background-music-engine
+    runtime: docker
+    plan: free
+    branch: main
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /ready
+    envVars:
+      - key: OUTPUT_DIR
+        value: /tmp/outputs
+      - key: MUSIC_PROVIDER
+        value: procedural
+      - key: DEBUG
+        value: "false"

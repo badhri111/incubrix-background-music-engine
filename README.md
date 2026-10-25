@@ -45,7 +45,14 @@ Review Render's current pricing and persistent-disk restrictions before choosing
 
 ### Free Render demo
 
-For a no-cost demo, follow the steps above but select the **Free** web-service instance, and skip the persistent disk. Build from the Dockerfile as described. The app can still generate and serve audio while running; however, Render spins down an idle free service and its local files are ephemeral. Generated mixes/stems and the in-memory job list will be lost when the service spins down, restarts, or redeploys. The first visit after idle may take about a minute to wake up. Free services are intended for testing and hobby projects, not production; check Render's current [free-instance limits](https://render.com/docs/free) before deploying.
+The repository includes [`render.yaml`](./render.yaml) so Render can use the free service plan, Dockerfile, `/ready` health check, and audio-output settings automatically:
+
+1. Sign in to Render and open its **New → Blueprint** flow.
+2. Connect `badhri111/incubrix-background-music-engine` and deploy the `main` branch.
+3. Review the blueprint and confirm the service plan is **Free**. Do not add a persistent disk or any paid service.
+4. Wait for the first build and `/ready` check to succeed, then open the service URL.
+
+The app can generate and serve audio while running; however, Render spins down an idle free service and its local files are ephemeral. Generated mixes/stems and the in-memory job list will be lost when the service spins down, restarts, or redeploys. The first visit after idle may take about a minute to wake up. Free services are intended for testing and hobby projects, not production; check Render's current [free-instance limits](https://render.com/docs/free) before deploying.
 
 Use short demo tracks and download the mix, stems, and manifest as soon as generation completes. The app has no authentication or rate limiting, so anyone with the public URL can submit jobs. Do not use this free demo for private audio, guaranteed availability, or durable storage.
 
