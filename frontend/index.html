@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IncuBrix – AI Background Music Engine</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <div class="logo">
+      <span class="logo-icon">🎵</span>
+      <span class="logo-text">IncuBrix <span class="accent">Music Engine</span></span>
+    </div>
+    <p class="tagline">Generate original instrumental music locally from a text prompt</p>
+  </header>
+
+  <main>
+    <!-- ── Generation Form ──────────────────────────────── -->
+    <section class="card" id="form-card">
+      <h2>New Music Job</h2>
+      <form id="music-form" novalidate>
+
+        <label for="prompt">Music mood / description <span class="req">*</span></label>
+        <textarea id="prompt" name="prompt" rows="3"
+          placeholder="e.g. calm acoustic music that builds into an uplifting finish"
+          required></textarea>
+
+        <div class="row-2">
+          <div>
+            <label for="duration">Duration (seconds) <span class="req">*</span></label>
+            <input id="duration" type="number" name="duration_s"
+              min="5" max="300" value="30" required />
+          </div>
+          <div>
+            <label for="tempo">Tempo (BPM) <span class="opt">optional</span></label>
+            <input id="tempo" type="number" name="tempo_bpm"
+              min="40" max="220" placeholder="auto" />
+          </div>
+        </div>
+
+        <label for="key">Musical key <span class="opt">optional</span></label>
+        <select id="key" name="key">
+          <option value="">Auto-detect from prompt</option>
+          <option value="C Major">C Major</option>
+          <option value="D Major">D Major</option>
+          <option value="E Major">E Major</option>
+          <option value="F Major">F Major</option>
+          <option value="G Major">G Major</option>
+          <option value="A Major">A Major</option>
+          <option value="A Minor">A Minor</option>
+          <option value="B Minor">B Minor</option>
+          <option value="C Minor">C Minor</option>
+          <option value="D Minor">D Minor</option>
+          <option value="E Minor">E Minor</option>
+          <option value="G Minor">G Minor</option>
+        </select>
+
+        <label for="seed">Seed <span class="opt">optional – for reproducible results</span></label>
+        <input id="seed" type="number" name="seed" placeholder="random" />
+
+        <!-- Sections builder -->
+        <div class="section-header">
+          <label>Music sections <span class="opt">optional</span></label>
+          <button type="button" id="add-section" class="btn-sm">+ Add section</button>
+        </div>
+        <div id="sections-container"></div>
+
+        <div class="row-2 mt-12">
+          <div>
+            <label for="sample-rate">Sample rate</label>
+            <select id="sample-rate" name="sample_rate">
+              <option value="48000" selected>48 000 Hz</option>
+            </select>
+          </div>
+          <div>
+            <label for="target-lufs">Target loudness (LUFS)</label>
+            <select id="target-lufs" name="target_lufs">
+              <option value="-16" selected>−16 LUFS (streaming standard)</option>
+              <option value="-14">−14 LUFS (YouTube)</option>
+              <option value="-23">−23 LUFS (broadcast)</option>
+              <option value="-18">−18 LUFS (dialogue mix)</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="form-error" class="alert error hidden"></div>
+        <button type="submit" id="submit-btn" class="btn-primary">🎼 Generate Music</button>
+      </form>
+    </section>
+
+    <!-- ── Job Status ────────────────────────────────────── -->
+    <section class="card hidden" id="status-card">
+      <h2>Generation Status</h2>
+      <div class="status-row">
+        <span id="status-badge" class="badge queued">queued</span>
+        <span id="job-id-display" class="job-id"></span>
+      </div>
+      <div class="progress-bar-wrap">
+        <div id="progress-bar" class="progress-bar" style="width:0%"></div>
+      </div>
+      <p id="status-message">Waiting for the server…</p>
+    </section>
+
+    <!-- ── Result ────────────────────────────────────────── -->
+    <section class="card hidden" id="result-card">
+      <h2>Result</h2>
+
+      <!-- Mix player -->
+      <div class="player-block">
+        <label class="player-label">🎧 Final Mix</label>
+        <audio id="mix-player" controls preload="metadata"></audio>
+        <div class="dl-row">
+          <a id="dl-mix-wav" class="btn-dl hidden" download>⬇ WAV</a>
+          <a id="dl-mix-mp3" class="btn-dl hidden" download>⬇ MP3</a>
+          <a id="dl-manifest" class="btn-dl secondary hidden" download>⬇ Manifest JSON</a>
+        </div>
+      </div>
+
+      <!-- Stems -->
+      <div class="stems-grid" id="stems-grid"></div>
+
+      <!-- Metadata panel -->
+      <details id="meta-details" class="meta-panel">
+        <summary>Technical metadata</summary>
+        <pre id="meta-pre"></pre>
+      </details>
+    </section>
+  </main>
+
+  <footer>
+    <p>IncuBrix Music Engine v1.0.0 &nbsp;·&nbsp;
+       Rule-based procedural DSP synthesis &nbsp;·&nbsp;
+       <a href="/docs" target="_blank">API docs</a>
+    </p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

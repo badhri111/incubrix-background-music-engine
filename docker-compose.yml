@@ -1,0 +1,16 @@
+services:
+  music-engine:
+    build: .
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      OUTPUT_DIR: /app/outputs
+      MUSIC_PROVIDER: ${MUSIC_PROVIDER:-procedural}
+      DEFAULT_SAMPLE_RATE: ${DEFAULT_SAMPLE_RATE:-48000}
+      DEFAULT_TARGET_LUFS: ${DEFAULT_TARGET_LUFS:--16}
+    volumes:
+      - music_outputs:/app/outputs
+    restart: unless-stopped
+
+volumes:
+  music_outputs:

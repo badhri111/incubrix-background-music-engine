@@ -1,0 +1,248 @@
+openapi: 3.1.0
+info:
+  title: IncuBrix Background Music Engine
+  version: 1.0.0
+  description: >
+    Background jobs generate instrumental music with a local, rule-based procedural
+    DSP synthesizer. This is not a trained AI music model.
+servers:
+  - url: http://localhost:8000
+paths:
+  /health:
+    get:
+      summary: Liveness check
+      responses:
+        "200":
+          description: Service is running
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, const: ok }
+                  service: { type: string }
+                  version: { type: string }
+                required: [status, service, version]
+  /ready:
+    get:
+      summary: Readiness check
+      responses:
+        "200":
+          description: Output directory is writable
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, const: ready }
+                  output_dir: { type: string }
+                required: [status, output_dir]
+        "503":
+          $ref: "#/components/responses/ServiceError"
+  /api/v1/music/jobs:
+    post:
+      summary: Submit a music-generation job
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: false
+          schema: { type: string }
+          description: Repeated keys return the original job.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MusicJobRequest"
+            example:
+              prompt: calm acoustic music that builds into an uplifting finish
+              duration_s: 30
+              sections:
+                - { start_s: 0, mood: calm }
+                - { start_s: 15, mood: uplifting }
+              tempo_bpm: 100
+              key: null
+              loopable: false
+              seed: 42
+              output:
+                sample_rate: 48000
+                target_lufs: -16
+                formats: [wav, mp3]
+      responses:
+        "202":
+          description: Job accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "422":
+          $ref: "#/components/responses/RequestError"
+        "500":
+          $ref: "#/components/responses/ServiceError"
+  /api/v1/jobs/{job_id}:
+    get:
+      summary: Get job status and result links
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      responses:
+        "200":
+          description: Current job state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/jobs/{job_id}/manifest:
+    get:
+      summary: Download the completed job manifest
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      responses:
+        "200":
+          description: Manifest JSON
+          content:
+            application/json:
+              schema: { type: object }
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/jobs/{job_id}/stems/{stem_name}/regenerate:
+    post:
+      summary: Regenerate one stem and update the mix
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+        - in: path
+          name: stem_name
+          required: true
+          schema: { type: string, enum: [drums, bass, harmony, melody] }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegenerateStemRequest"
+      responses:
+        "200":
+          description: Updated job and download links
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/RequestError"
+        "422":
+          $ref: "#/components/responses/RequestError"
+        "500":
+          $ref: "#/components/responses/ServiceError"
+  /api/v1/jobs/{job_id}/downloads/{file_path}:
+    get:
+      summary: Download a mix or stem file
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+        - in: path
+          name: file_path
+          required: true
+          schema: { type: string }
+          description: For example mix.wav or stems/drums.wav.
+      responses:
+        "200":
+          description: Audio or JSON output file
+          content:
+            audio/wav: { schema: { type: string, format: binary } }
+            audio/mpeg: { schema: { type: string, format: binary } }
+            application/json: { schema: { type: string, format: binary } }
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "400":
+          $ref: "#/components/responses/RequestError"
+components:
+  parameters:
+    JobId:
+      in: path
+      name: job_id
+      required: true
+      schema: { type: string, format: uuid }
+  schemas:
+    MusicJobRequest:
+      type: object
+      required: [prompt, duration_s]
+      properties:
+        prompt: { type: string, minLength: 1, pattern: ".*\\S.*" }
+        duration_s: { type: number, minimum: 5, maximum: 300 }
+        sections:
+          oneOf:
+            - type: "null"
+            - type: array
+              items:
+                type: object
+                required: [start_s, mood]
+                properties:
+                  start_s: { type: number, minimum: 0 }
+                  mood: { type: string, minLength: 1 }
+        tempo_bpm: { type: [integer, "null"], minimum: 40, maximum: 220 }
+        key: { type: [string, "null"] }
+        loopable: { type: boolean, default: false }
+        seed: { type: [integer, "null"] }
+        narration_url:
+          type: [string, "null"]
+          description: Optional local WAV path or WAV URL for voiceover ducking.
+        output:
+          oneOf:
+            - type: "null"
+            - type: object
+              properties:
+                sample_rate: { type: integer, const: 48000, default: 48000 }
+                target_lufs: { type: number, minimum: -36, maximum: 0, default: -16 }
+                formats:
+                  type: array
+                  items: { type: string, enum: [wav, mp3] }
+                  contains: { const: wav }
+                  minContains: 1
+                  default: [wav, mp3]
+    RegenerateStemRequest:
+      type: object
+      required: [stem_name]
+      properties:
+        stem_name: { type: string, enum: [drums, bass, harmony, melody] }
+        seed: { type: [integer, "null"] }
+    Job:
+      type: object
+      properties:
+        job_id: { type: string, format: uuid }
+        status: { type: string, enum: [queued, running, succeeded, failed] }
+        progress: { type: integer, minimum: 0, maximum: 100 }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        request: { $ref: "#/components/schemas/MusicJobRequest" }
+        downloads: { type: [object, "null"], additionalProperties: { type: string } }
+        manifest: { type: [object, "null"] }
+        error:
+          oneOf:
+            - $ref: "#/components/schemas/ApiError"
+            - type: "null"
+      required: [job_id, status, progress, created_at, updated_at]
+    ApiError:
+      type: object
+      properties:
+        code: { type: string }
+        message: { type: string }
+        retryable: { type: boolean }
+        details: { type: [object, "null"] }
+      required: [code, message, retryable, details]
+  responses:
+    RequestError:
+      description: Invalid request
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiError" }
+    ServiceError:
+      description: Service is not ready
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiError" }
+    NotFound:
+      description: Job or file not found
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiError" }
